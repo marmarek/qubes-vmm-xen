@@ -1,0 +1,66 @@
+From 0d2791b007436f83cc8cb922acb1849a3ff31f3a Mon Sep 17 00:00:00 2001
+From: Anthony PERARD <anthony.perard@citrix.com>
+Date: Fri, 15 Nov 2019 16:15:32 +0000
+Subject: [PATCH] configure: Fix test for python 3.8
+
+https://docs.python.org/3.8/whatsnew/3.8.html#debug-build-uses-the-same-abi-as-release-build
+
+> To embed Python into an application, a new --embed option must be
+> passed to python3-config --libs --embed to get -lpython3.8 (link the
+> application to libpython). To support both 3.8 and older, try
+> python3-config --libs --embed first and fallback to python3-config
+> --libs (without --embed) if the previous command fails.
+
+Signed-off-by: Anthony PERARD <anthony.perard@citrix.com>
+Acked-by: Wei Liu <wl@xen.org>
+[ wei: rerun autogen.sh ]
+---
+ m4/python_devel.m4 | 11 +++++++++--
+ tools/configure    |  9 +++++++--
+ 2 files changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/m4/python_devel.m4 b/m4/python_devel.m4
+index e365cd658e0e..bbf1e0354b2b 100644
+--- a/m4/python_devel.m4
++++ b/m4/python_devel.m4
+@@ -23,8 +23,15 @@ AS_IF([test x"$pyconfig" = x"no"], [
+ ], [
+     dnl If python-config is found use it
+     CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+-    LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
+-    LIBS="$LIBS `$PYTHON-config --libs`"
++    dnl We need to use --embed with python 3.8 but not with earlier version so
++    dnl check if it is recognized.
++    python_devel_embed=""
++    if $PYTHON-config --embed >/dev/null 2>/dev/null; then
++      python_devel_embed="--embed"
++    fi
++    LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags $python_devel_embed`"
++    LIBS="$LIBS `$PYTHON-config --libs $python_devel_embed`"
++    unset python_devel_embed
+ ])
+ 
+ AC_CHECK_HEADER([Python.h], [],
+diff --git a/tools/configure b/tools/configure
+index d9ccce6d2b88..e47bcef35165 100755
+--- a/tools/configure
++++ b/tools/configure
+@@ -7460,8 +7460,13 @@ if test x"$pyconfig" = x"no"; then :
+ else
+ 
+         CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+-    LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
+-    LIBS="$LIBS `$PYTHON-config --libs`"
++            python_devel_embed=""
++    if $PYTHON-config --embed >/dev/null 2>/dev/null; then
++      python_devel_embed="--embed"
++    fi
++    LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags $python_devel_embed`"
++    LIBS="$LIBS `$PYTHON-config --libs $python_devel_embed`"
++    unset python_devel_embed
+ 
+ fi
+ 
+-- 
+2.25.4
+

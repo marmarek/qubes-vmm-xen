@@ -1,0 +1,174 @@
+From 16cc3362aed39e3093419b9df6ec73269071d063 Mon Sep 17 00:00:00 2001
+From: Wei Liu <wei.liu2@citrix.com>
+Date: Tue, 5 Mar 2019 12:32:06 +0000
+Subject: [PATCH] build/m4: make python_devel.m4 work with both python 2 and 3
+
+Do the following:
+
+1. Change the form of "print".
+2. Use AC_CHECK_FUNC to avoid the need to generate library name.
+3. Remove unused stuff.
+
+Signed-off-by: Wei Liu <wei.liu2@citrix.com>
+Reviewed-by: Anthony PERARD <anthony.perard@citrix.com>
+---
+ m4/python_devel.m4 | 23 ++++++-----------
+ tools/configure    | 64 ++++++----------------------------------------
+ 2 files changed, 16 insertions(+), 71 deletions(-)
+
+diff --git a/m4/python_devel.m4 b/m4/python_devel.m4
+index 05ea4ef7e25a..f9cb23aee100 100644
+--- a/m4/python_devel.m4
++++ b/m4/python_devel.m4
+@@ -1,38 +1,31 @@
+ AC_DEFUN([AX_CHECK_PYTHON_DEVEL], [
+ ac_previous_cppflags=$CPPFLAGS
+ ac_previous_ldflags=$LDFLAGS
+-ac_python_version=`$PYTHON -c 'import distutils.sysconfig; \
+-    print distutils.sysconfig.get_config_var("VERSION")'`
+ AC_PATH_PROG([pyconfig], [$PYTHON-config], [no])
+ AS_IF([test x"$pyconfig" = x"no"], [
+     dnl For those that don't have python-config
+     CPPFLAGS="$CFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+         print "-I" + distutils.sysconfig.get_config_var("INCLUDEPY")'`"
+     CPPFLAGS="$CPPFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("CFLAGS")'`"
+-    PYTHON_LIBS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LIBS")'`"
+-    PYTHON_LIBS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("SYSLIBS")'`"
++        print(distutils.sysconfig.get_config_var("CFLAGS"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print "-L" + distutils.sysconfig.get_python_lib(plat_specific=1,\
+-        standard_lib=1) + "/config"'`"
++        print("-L" + distutils.sysconfig.get_python_lib(plat_specific=1,\
++        standard_lib=1) + "/config")'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LINKFORSHARED")'`"
++        print(distutils.sysconfig.get_config_var("LINKFORSHARED"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LDFLAGS")'`"
++        print(distutils.sysconfig.get_config_var("LDFLAGS"))'`"
+ ], [
+     dnl If python-config is found use it
+     CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+     LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
+-    PYTHON_LIBS="$LIBS `$PYTHON-config --libs`"
+ ])
+ 
+ AC_CHECK_HEADER([Python.h], [],
+     [AC_MSG_ERROR([Unable to find Python development headers])],)
+-AC_CHECK_LIB(python$ac_python_version, PyArg_ParseTuple, [],
+-    [AC_MSG_ERROR([Unable to find a suitable python development library])],
+-    [$PYTHON_LIBS])
++AC_CHECK_FUNC([PyArg_ParseTuple], [],
++    [AC_MSG_ERROR([Unable to find a suitable python development library])]) 
++
+ CPPFLAGS=$ac_previous_cppflags
+ LDFLAGS=$ac_previous_ldflags
+ ])
+diff --git a/tools/configure b/tools/configure
+index d0065b811d24..e1fa5d6b0f5c 100755
+--- a/tools/configure
++++ b/tools/configure
+@@ -7418,8 +7418,6 @@ if test "$cross_compiling" != yes; then :
+ 
+ ac_previous_cppflags=$CPPFLAGS
+ ac_previous_ldflags=$LDFLAGS
+-ac_python_version=`$PYTHON -c 'import distutils.sysconfig; \
+-    print distutils.sysconfig.get_config_var("VERSION")'`
+ # Extract the first word of "$PYTHON-config", so it can be a program name with args.
+ set dummy $PYTHON-config; ac_word=$2
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+@@ -7466,24 +7464,19 @@ if test x"$pyconfig" = x"no"; then :
+         CPPFLAGS="$CFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+         print "-I" + distutils.sysconfig.get_config_var("INCLUDEPY")'`"
+     CPPFLAGS="$CPPFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("CFLAGS")'`"
+-    PYTHON_LIBS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LIBS")'`"
+-    PYTHON_LIBS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("SYSLIBS")'`"
++        print(distutils.sysconfig.get_config_var("CFLAGS"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print "-L" + distutils.sysconfig.get_python_lib(plat_specific=1,\
+-        standard_lib=1) + "/config"'`"
++        print("-L" + distutils.sysconfig.get_python_lib(plat_specific=1,\
++        standard_lib=1) + "/config")'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LINKFORSHARED")'`"
++        print(distutils.sysconfig.get_config_var("LINKFORSHARED"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+-        print distutils.sysconfig.get_config_var("LDFLAGS")'`"
++        print(distutils.sysconfig.get_config_var("LDFLAGS"))'`"
+ 
+ else
+ 
+         CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+     LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
+-    PYTHON_LIBS="$LIBS `$PYTHON-config --libs`"
+ 
+ fi
+ 
+@@ -7495,55 +7488,14 @@ else
+ fi
+ 
+ 
+-as_ac_Lib=`$as_echo "ac_cv_lib_python$ac_python_version''_PyArg_ParseTuple" | $as_tr_sh`
+-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for PyArg_ParseTuple in -lpython$ac_python_version" >&5
+-$as_echo_n "checking for PyArg_ParseTuple in -lpython$ac_python_version... " >&6; }
+-if eval \${$as_ac_Lib+:} false; then :
+-  $as_echo_n "(cached) " >&6
+-else
+-  ac_check_lib_save_LIBS=$LIBS
+-LIBS="-lpython$ac_python_version $PYTHON_LIBS $LIBS"
+-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+-/* end confdefs.h.  */
+-
+-/* Override any GCC internal prototype to avoid an error.
+-   Use char because int might match the return type of a GCC
+-   builtin and then its argument prototype would still apply.  */
+-#ifdef __cplusplus
+-extern "C"
+-#endif
+-char PyArg_ParseTuple ();
+-int
+-main ()
+-{
+-return PyArg_ParseTuple ();
+-  ;
+-  return 0;
+-}
+-_ACEOF
+-if ac_fn_c_try_link "$LINENO"; then :
+-  eval "$as_ac_Lib=yes"
+-else
+-  eval "$as_ac_Lib=no"
+-fi
+-rm -f core conftest.err conftest.$ac_objext \
+-    conftest$ac_exeext conftest.$ac_ext
+-LIBS=$ac_check_lib_save_LIBS
+-fi
+-eval ac_res=\$$as_ac_Lib
+-	       { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_res" >&5
+-$as_echo "$ac_res" >&6; }
+-if eval test \"x\$"$as_ac_Lib"\" = x"yes"; then :
+-  cat >>confdefs.h <<_ACEOF
+-#define `$as_echo "HAVE_LIBpython$ac_python_version" | $as_tr_cpp` 1
+-_ACEOF
+-
+-  LIBS="-lpython$ac_python_version $LIBS"
++ac_fn_c_check_func "$LINENO" "PyArg_ParseTuple" "ac_cv_func_PyArg_ParseTuple"
++if test "x$ac_cv_func_PyArg_ParseTuple" = xyes; then :
+ 
+ else
+   as_fn_error $? "Unable to find a suitable python development library" "$LINENO" 5
+ fi
+ 
++
+ CPPFLAGS=$ac_previous_cppflags
+ LDFLAGS=$ac_previous_ldflags
+ 
+-- 
+2.25.4
+

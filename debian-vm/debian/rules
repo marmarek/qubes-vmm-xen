@@ -11,11 +11,12 @@ include /usr/share/dpkg/default.mk
 export DESTDIR=$(shell pwd)/debian/tmp
 BUILD_DIR = debian/build
 
+export PYTHON = /usr/bin/python3
+
 %:
-	dh $@ --with autoreconf,autotools-dev,python2,systemd
+	dh $@ --with autoreconf,autotools-dev,python3,systemd
 
 override_dh_auto_configure:
-	PYTHON=/usr/bin/python2 \
 	dh_auto_configure -- --prefix=/usr \
 		--includedir=/usr/include \
 		--mandir=/usr/share/man \

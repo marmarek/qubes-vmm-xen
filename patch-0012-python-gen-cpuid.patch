@@ -1,0 +1,11 @@
+--- a/xen/tools/gen-cpuid.py	2021-01-01 06:12:59.000000000 +0100
++++ b/xen/tools/gen-cpuid.py	2021-01-01 06:18:27.836000000 +0100
+@@ -135,7 +135,7 @@ def crunch_numbers(state):
+     # All known features.  Duplicate the common features in e1d
+     e1d_base = SYSCALL & ~31
+     state.known = featureset_to_uint32s(
+-        state.names.keys() + [ e1d_base + (x % 32) for x in common_1d ],
++        list(state.names.keys()) + [ e1d_base + (x % 32) for x in common_1d ],
+         nr_entries)
+ 
+     # Fold common back into names

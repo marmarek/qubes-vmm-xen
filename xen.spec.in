@@ -366,8 +366,17 @@ Patch1005: patch-0005-python-use-PyBytes-PyUnicode-instead-of-PyString.patch
 Patch1006: patch-0006-python-use-PyLong_-for-constructing-int-type-in-Pyth.patch
 Patch1007: patch-0007-python-adjust-module-initalization-for-Python3.patch
 Patch1008: patch-0008-python-handle-long-type-in-scripts.patch
+Patch1009: patch-0009-python-xen-tools-support-Python-2-and-Python-3.patch
+Patch1010: patch-0010-python-build-m4-make-python_devel.m4-work-with-both-python-.patch
+Patch1011: patch-0011-python-tools-xen-foreign-Update-python-scripts-to-be-Py3-co.patch
+Patch1012: patch-0012-python-gen-cpuid.patch
+Patch1013: patch-0013-python-libxl-make-python-scripts-work-with-python-2.6-and-u.patch
+Patch1014: patch-0014-python-tools-python-Drop-test.py.patch
+Patch1015: patch-0015-python-tools-python-Python-3-compatibility.patch
+Patch1016: patch-0016-python-build-m4-fix-python-library-detection-on-Ubuntu-syst.patch
+Patch1017: patch-0017-python-configure-Fix-test-for-python-3.8.patch
 # GCC9 fix, applied over python3
-Patch1017: patch-python-fix-Wsign-compare-warnings.patch
+Patch1018: patch-python-fix-Wsign-compare-warnings.patch
 
 # Support for Linux based stubdom
 Patch1101: patch-stubdom-linux-0004.patch

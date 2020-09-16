@@ -35,12 +35,12 @@ Build-Depends:
     mime-support,
     perl,
     pkg-config,
-    python-dev | python2-dev,
-    python | python2,
+    python3-dev,
+    python3,
     seabios,
     uuid-dev:amd64,
     zlib1g-dev,
-X-Python-Version: 2.7
+X-Python-Version: 3.5
 Standards-Version: 3.9.5
 Homepage: http://www.qubes-os.org
 Vcs-Git: git://git.qubes-os.org/marmarek/vmm-xen-debian.git
@@ -99,7 +99,7 @@ Description: Xenstore command line utilities for Xen
 
 Package: xen-utils-common
 Architecture: all
-Depends: lsb-base, python2 | python, udev, xenstore-utils, ${shlibs:Depends}, ${python:Depends}, ${misc:Depends}
+Depends: lsb-base, python3, udev, xenstore-utils, ${shlibs:Depends}, ${python3:Depends}, ${misc:Depends}
 X-Python-Version: ${python:Versions}
 Description: Xen administrative tools - common files
  The userspace tools to manage a system virtualized through the Xen virtual

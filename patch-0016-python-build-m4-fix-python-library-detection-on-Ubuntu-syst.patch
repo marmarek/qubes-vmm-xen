@@ -1,0 +1,89 @@
+From 38a85fe8d98b54da7f842f8d78bf8c54f7747735 Mon Sep 17 00:00:00 2001
+From: Wei Liu <wei.liu2@citrix.com>
+Date: Wed, 13 Mar 2019 13:54:48 +0000
+Subject: [PATCH] build/m4: fix python library detection on Ubuntu systems
+
+16cc3362aed doesn't work on Ubuntu with gcc (but it does work with
+clang). Work around it by manipulating LIBS.
+
+Signed-off-by: Wei Liu <wei.liu2@citrix.com>
+Acked-by: Andrew Cooper <andrew.cooper3@citrix.com>
+---
+ m4/python_devel.m4 | 7 +++++++
+ tools/configure    | 7 +++++++
+ 2 files changed, 14 insertions(+)
+
+diff --git a/m4/python_devel.m4 b/m4/python_devel.m4
+index f9cb23aee100..7f2638137677 100644
+--- a/m4/python_devel.m4
++++ b/m4/python_devel.m4
+@@ -1,6 +1,7 @@
+ AC_DEFUN([AX_CHECK_PYTHON_DEVEL], [
+ ac_previous_cppflags=$CPPFLAGS
+ ac_previous_ldflags=$LDFLAGS
++ac_previous_libs=$LIBS
+ AC_PATH_PROG([pyconfig], [$PYTHON-config], [no])
+ AS_IF([test x"$pyconfig" = x"no"], [
+     dnl For those that don't have python-config
+@@ -15,10 +16,15 @@ AS_IF([test x"$pyconfig" = x"no"], [
+         print(distutils.sysconfig.get_config_var("LINKFORSHARED"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+         print(distutils.sysconfig.get_config_var("LDFLAGS"))'`"
++    LIBS="$LIBS `$PYTHON -c 'import distutils.sysconfig; \
++        print(distutils.sysconfig.get_config_var("LIBS"))'`"
++    LIBS="$LIBS `$PYTHON -c 'import distutils.sysconfig; \
++        print(distutils.sysconfig.get_config_var("SYSLIBS"))'`"
+ ], [
+     dnl If python-config is found use it
+     CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+     LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
++    LIBS="$LIBS `$PYTHON-config --libs`"
+ ])
+ 
+ AC_CHECK_HEADER([Python.h], [],
+@@ -28,4 +34,5 @@ AC_CHECK_FUNC([PyArg_ParseTuple], [],
+ 
+ CPPFLAGS=$ac_previous_cppflags
+ LDFLAGS=$ac_previous_ldflags
++LIBS=$ac_previous_libs
+ ])
+diff --git a/tools/configure b/tools/configure
+index 9ff879548aee..b66d3f6fbad1 100755
+--- a/tools/configure
++++ b/tools/configure
+@@ -7418,6 +7418,7 @@ if test "$cross_compiling" != yes; then :
+ 
+ ac_previous_cppflags=$CPPFLAGS
+ ac_previous_ldflags=$LDFLAGS
++ac_previous_libs=$LIBS
+ # Extract the first word of "$PYTHON-config", so it can be a program name with args.
+ set dummy $PYTHON-config; ac_word=$2
+ { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+@@ -7472,11 +7473,16 @@ if test x"$pyconfig" = x"no"; then :
+         print(distutils.sysconfig.get_config_var("LINKFORSHARED"))'`"
+     LDFLAGS="$LDFLAGS `$PYTHON -c 'import distutils.sysconfig; \
+         print(distutils.sysconfig.get_config_var("LDFLAGS"))'`"
++    LIBS="$LIBS `$PYTHON -c 'import distutils.sysconfig; \
++        print(distutils.sysconfig.get_config_var("LIBS"))'`"
++    LIBS="$LIBS `$PYTHON -c 'import distutils.sysconfig; \
++        print(distutils.sysconfig.get_config_var("SYSLIBS"))'`"
+ 
+ else
+ 
+         CPPFLAGS="$CFLAGS `$PYTHON-config --cflags`"
+     LDFLAGS="$LDFLAGS `$PYTHON-config --ldflags`"
++    LIBS="$LIBS `$PYTHON-config --libs`"
+ 
+ fi
+ 
+@@ -7498,6 +7504,7 @@ fi
+ 
+ CPPFLAGS=$ac_previous_cppflags
+ LDFLAGS=$ac_previous_ldflags
++LIBS=$ac_previous_libs
+ 
+ 
+     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether Python setup.py brokenly enables -D_FORTIFY_SOURCE" >&5
+-- 
+2.25.4
+

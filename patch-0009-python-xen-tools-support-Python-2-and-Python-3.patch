@@ -1,0 +1,138 @@
+From 18596903e9f1362826b71f69008e5c839cc756b5 Mon Sep 17 00:00:00 2001
+From: Doug Goldstein <cardoe@cardoe.com>
+Date: Wed, 28 Feb 2018 13:18:44 -0600
+Subject: [PATCH] xen/tools: support Python 2 and Python 3
+
+These changes should make it possible to support modern Pythons as well
+as the oldest Python 2 still supported.
+
+Signed-off-by: Doug Goldstein <cardoe@cardoe.com>
+Acked-by: Andrew Cooper <andrew.cooper3@citrix.com>
+---
+ xen/tools/compat-build-header.py |  2 +-
+ xen/tools/compat-build-source.py |  2 +-
+ xen/tools/gen-cpuid.py           | 34 ++++++++++++++++++++++----------
+ xen/tools/get-fields.sh          |  2 +-
+ 4 files changed, 27 insertions(+), 13 deletions(-)
+
+diff --git a/xen/tools/compat-build-header.py b/xen/tools/compat-build-header.py
+index 32421b645b26..b85c43f13faf 100755
+--- a/xen/tools/compat-build-header.py
++++ b/xen/tools/compat-build-header.py
+@@ -23,4 +23,4 @@ pats = [
+ for line in sys.stdin.readlines():
+     for pat in pats:
+         line = re.subn(pat[0], pat[1], line)[0]
+-    print line.rstrip()
++    print(line.rstrip())
+diff --git a/xen/tools/compat-build-source.py b/xen/tools/compat-build-source.py
+index 595bc3ff58be..c664eb85e633 100755
+--- a/xen/tools/compat-build-source.py
++++ b/xen/tools/compat-build-source.py
+@@ -26,4 +26,4 @@ for pat in pats:
+     for xlat in xlats:
+         line = re.subn(r"(struct|union)\s+(%s|xen_%s)\s+(\w)" % (xlat, xlat),
+             r"\1 @KeeP@\2 \3", line.rstrip())[0]
+-    print line.rstrip()
++    print(line.rstrip())
+diff --git a/xen/tools/gen-cpuid.py b/xen/tools/gen-cpuid.py
+index 613b909c3de7..6359afb70437 100755
+--- a/xen/tools/gen-cpuid.py
++++ b/xen/tools/gen-cpuid.py
+@@ -3,6 +3,10 @@
+ 
+ import sys, os, re
+ 
++if (sys.version_info > (3, 0)):
++    def xrange(x):
++        return range(x)
++
+ class Fail(Exception):
+     pass
+ 
+@@ -98,13 +102,13 @@ def parse_definitions(state):
+ def featureset_to_uint32s(fs, nr):
+     """ Represent a featureset as a list of C-compatible uint32_t's """
+ 
+-    bitmap = 0L
++    bitmap = 0
+     for f in fs:
+-        bitmap |= 1L << f
++        bitmap |= 1 << f
+ 
+     words = []
+     while bitmap:
+-        words.append(bitmap & ((1L << 32) - 1))
++        words.append(bitmap & ((1 << 32) - 1))
+         bitmap >>= 32
+ 
+     assert len(words) <= nr
+@@ -276,8 +280,8 @@ def crunch_numbers(state):
+             # To debug, uncomment the following lines:
+             # def repl(l):
+             #     return "[" + ", ".join((state.names[x] for x in l)) + "]"
+-            # print >>sys.stderr, "Feature %s, seen %s, to_process %s " % \
+-            #     (state.names[feat], repl(seen), repl(to_process))
++            # sys.stderr.write("Feature %s, seen %s, to_process %s \n" % \
++            #     (state.names[feat], repl(seen), repl(to_process)))
+ 
+             f = to_process.pop(0)
+ 
+@@ -293,7 +297,12 @@ def crunch_numbers(state):
+     state.deep_features = featureset_to_uint32s(deps.keys(), nr_entries)
+     state.nr_deep_deps = len(state.deep_deps.keys())
+ 
+-    for k, v in state.deep_deps.iteritems():
++    try:
++        _tmp = state.deep_deps.iteritems()
++    except AttributeError:
++        _tmp = state.deep_deps.items()
++
++    for k, v in _tmp:
+         state.deep_deps[k] = featureset_to_uint32s(v, nr_entries)
+ 
+ 
+@@ -410,7 +419,8 @@ def open_file_or_fd(val, mode, buffering):
+         else:
+             return open(val, mode, buffering)
+ 
+-    except StandardError, e:
++    except StandardError:
++        e = sys.exc_info()[1]
+         if fd != -1:
+             raise Fail("Unable to open fd %d: %s: %s" %
+                        (fd, e.__class__.__name__, e))
+@@ -453,10 +463,14 @@ def main():
+ if __name__ == "__main__":
+     try:
+         sys.exit(main())
+-    except Fail, e:
+-        print >>sys.stderr, "%s:" % (sys.argv[0],), e
++    except Fail:
++        e = sys.exc_info()[1]
++        sys.stderr.write("%s:" % (sys.argv[0],))
++        sys.stderr.write(e)
++        sys.stderr.write("\n")
+         sys.exit(1)
+-    except SystemExit, e:
++    except SystemExit:
++        e = sys.exc_info()[1]
+         sys.exit(e.code)
+     except KeyboardInterrupt:
+         sys.exit(2)
+diff --git a/xen/tools/get-fields.sh b/xen/tools/get-fields.sh
+index 887feec370c9..45a0e2ed5090 100644
+--- a/xen/tools/get-fields.sh
++++ b/xen/tools/get-fields.sh
+@@ -139,7 +139,7 @@ handle_field ()
+ 		local tag=$(echo "$5" | ${PYTHON} -c '
+ import re,sys
+ for line in sys.stdin.readlines():
+-    print re.subn(r"\s*(struct|union)\s+(compat_)?(\w+)\s.*", r"\3", line)[0].rstrip()
++    sys.stdout.write(re.subn(r"\s*(struct|union)\s+(compat_)?(\w+)\s.*", r"\3", line)[0].rstrip() + "\n")
+ ')
+ 		echo " \\"
+ 		printf %s "${1}XLAT_$tag(&(_d_)->$3, &(_s_)->$3);"
+-- 
+2.25.4
+
