@@ -16,15 +16,15 @@ are already closed so just remove the devices, without waiting for
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl_pci.c | 7 +++++--
+ tools/libs/light/libxl_pci.c | 7 +++++--
  1 file changed, 5 insertions(+), 2 deletions(-)
 
-diff --git a/tools/libxl/libxl_pci.c b/tools/libxl/libxl_pci.c
+diff --git a/tools/libs/light/libxl_pci.c b/tools/libs/light/libxl_pci.c
 index 61bef12..395ed6b 100644
---- a/tools/libxl/libxl_pci.c
-+++ b/tools/libxl/libxl_pci.c
+--- a/tools/libs/light/libxl_pci.c
++++ b/tools/libs/light/libxl_pci.c
 @@ -330,7 +330,7 @@ retry_transaction:
- static int libxl__device_pci_remove_xenstore(libxl__gc *gc, uint32_t domid, libxl_device_pci *pcidev)
+ static int libxl__device_pci_remove_xenstore(libxl__gc *gc, uint32_t domid, libxl_device_pci *pci)
  {
      libxl_ctx *ctx = libxl__gc_owner(gc);
 -    char *be_path, *num_devs_path, *num_devs, *xsdev, *tmp, *tmppath;

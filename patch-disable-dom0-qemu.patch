@@ -5,8 +5,8 @@ a savefile), than running qemu in dom0.
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 
---- a/tools/libxl/libxl_dm.c	2020-08-16 21:59:38.909000000 +0200
-+++ b/tools/libxl/libxl_dm.c	2020-08-19 00:54:58.039000000 +0200
+--- a/tools/libs/light/libxl_dm.c	2020-08-16 21:59:38.909000000 +0200
++++ b/tools/libs/light/libxl_dm.c	2020-08-19 00:54:58.039000000 +0200
 @@ -2519,7 +2519,7 @@ static void spawn_stub_launch_dm(libxl__
       * Until xenconsoled learns how to handle multiple consoles, require qemu
       * in dom0 to serve consoles for a stubdomain - it require at least 3 of them.

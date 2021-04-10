@@ -14,13 +14,13 @@ type and only then is appropriately handled by stubdomain.
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl.c | 13 -------------
+ tools/libs/light/libxl.c | 13 -------------
  1 file changed, 13 deletions(-)
 
-diff --git a/tools/libxl/libxl_disk.c b/tools/libxl/libxl_disk.c
+diff --git a/tools/libs/light/libxl_disk.c b/tools/libs/light/libxl_disk.c
 index 814aa02..5cca657 100644
---- a/tools/libxl/libxl_disk.c
-+++ b/tools/libxl/libxl_disk.c
+--- a/tools/libs/light/libxl_disk.c
++++ b/tools/libs/light/libxl_disk.c
 @@ -2095,17 +2095,6 @@ int libxl__device_disk_setdefault(libxl__gc *gc, libxl_device_disk *disk,
      rc = libxl__resolve_domid(gc, disk->backend_domname, &disk->backend_domid);
      if (rc < 0) return rc;

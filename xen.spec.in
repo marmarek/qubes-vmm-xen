@@ -103,24 +103,9 @@ Patch203: patch-0001-Add-xen.cfg-options-for-mapbs-and-noexitboot.patch
 
 # Backports
 
-# Backport unified xen hypervisor patches from Xen 4.15
-Patch301: patch-unified-0001-x86-setup-Ignore-early-boot-parameters-like-no-real-.patch
-Patch302: patch-unified-0002-EFI-some-easy-constification.patch
-Patch303: patch-unified-0003-efi-boot-make-file-ptr-const-void.patch
-Patch304: patch-unified-0004-efi-boot-wrap-PrintStr-PrintErr-to-allow-const-CHAR1.patch
-Patch305: patch-unified-0005-efi-boot.c-add-file.need_to_free.patch
-Patch306: patch-unified-0006-efi-boot.c-add-handle_file_info.patch
-Patch307: patch-unified-0007-efi-make-blexit-global.patch
-Patch308: patch-unified-0008-efi-Enable-booting-unified-hypervisor-kernel-initrd-.patch
-Patch309: patch-unified-0009-EFI-Arm64-don-t-clobber-DTB-pointer.patch
-Patch310: patch-unified-0010-EFI-further-need_to_free-adjustments.patch
-
-Patch320: patch-libxl-resume.patch
-Patch321: patch-x86-hpet-Fix-return-value-of-hpet_setup.patch
-Patch322: patch-x86-timer-Fix-boot-on-Intel-systems-using-ITSSPRC-st.patch
 # not committed yet
-Patch323: patch-0001-x86-hpet-Factor-hpet_enable_legacy_replacement_mode-.patch
-Patch324: patch-0002-x86-hpet-Don-t-enable-legacy-replacement-mode-uncond.patch
+#Patch323: patch-0001-x86-hpet-Factor-hpet_enable_legacy_replacement_mode-.patch
+#Patch324: patch-0002-x86-hpet-Don-t-enable-legacy-replacement-mode-uncond.patch
 
 
 # Security fixes
@@ -136,8 +121,7 @@ Patch614: patch-0001-libxl-do-not-fail-device-removal-if-backend-domain-i.patch
 Patch621: patch-libxc-fix-xc_gntshr_munmap-semantic.patch
 Patch622: patch-xen-disable-efi-gettime.patch
 Patch627: patch-libxl-automatically-enable-gfx_passthru-if-IGD-is-as.patch
-Patch631: patch-Revert-xen-credit2-limit-the-max-number-of-CPUs-in-a.patch
-Patch634: patch-libxl-cleanup-remaining-backend-xs-dirs-after-driver.patch
+#Patch631: patch-Revert-xen-credit2-limit-the-max-number-of-CPUs-in-a.patch
 
 # GCC8 fixes
 Patch714: patch-tools-kdd-mute-spurious-gcc-warning.patch
@@ -171,11 +155,9 @@ Patch1023: patch-0001-libxl-conditionally-allow-PCI-passthrough-on-PV-with.patch
 Patch1030: patch-fix-igd-passthrough-with-linux-stubdomain.patch
 
 # Reproducible builds
-Patch1050: patch-0001-No-insert-of-the-build-timestamp-into-the-x86-xen-ef.patch
-Patch1051: patch-0002-common-remove-gzip-timestamp.patch
 Patch1052: patch-Define-build-dates-time-based-on-SOURCE_DATE_EPOCH.patch
 Patch1053: patch-docs-rename-DATE-to-PANDOC_REL_DATE-and-allow-to-spe.patch
-Patch1054: patch-docs-xen-headers-use-alphabetical-sorting-for-incont.patch
+#Patch1054: patch-docs-xen-headers-use-alphabetical-sorting-for-incont.patch
 Patch1055: patch-Strip-build-path-directories-in-tools-xen-and-xen-ar.patch
 
 %if %build_qemutrad
@@ -540,7 +522,10 @@ do
 done
 
 # BEGIN QUBES SPECIFIC PART
-rm -f %{buildroot}/usr/libexec/qemu-bridge-helper
+rm -f %{buildroot}/usr/libexec/%{name}/libexec/qemu-bridge-helper
+rm -f %{buildroot}/usr/libexec/%{name}/libexec/qemu-pr-helper
+rm -f %{buildroot}/usr/libexec/%{name}/libexec/virtfs-proxy-helper
+rm -f %{buildroot}/usr/libexec/%{name}/libexec/virtiofsd
 # END QUBES SPECIFIC PART
 
 # README's not intended for end users
@@ -788,7 +773,7 @@ fi
 %dir %attr(0700,root,root) %{_sysconfdir}/%{name}/scripts/
 %config %attr(0700,root,root) %{_sysconfdir}/%{name}/scripts/*
 
-%{_sysconfdir}/bash_completion.d/xl.sh
+%{_sysconfdir}/bash_completion.d/xl
 
 %{_unitdir}/proc-xen.mount
 %{_unitdir}/var-lib-xenstored.mount
@@ -844,6 +829,7 @@ fi
 %{_mandir}/man7/xen-vtpm.7.gz
 %{_mandir}/man7/xen-vtpmmgr.7.gz
 %{_mandir}/man5/xl-network-configuration.5.gz
+%{_mandir}/man5/xl-pci-configuration.5.gz
 %{_mandir}/man7/xen-pv-channel.7.gz
 %{_mandir}/man7/xl-numa-placement.7.gz
 %{_mandir}/man7/xen-vbd-interface.7.gz
@@ -931,6 +917,8 @@ fi
 %ifnarch armv7hl aarch64
 %{_bindir}/xen-cpuid
 %endif
+%{_sbindir}/xen-access
+%{_sbindir}/xen-memshare
 %{_sbindir}/xen-livepatch
 %{_sbindir}/xen-diag
 # BEGIN QUBES SPECIFIC PART

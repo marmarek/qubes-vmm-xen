@@ -16,13 +16,13 @@ Saving the state doesn't work on Qubes for two reasons:
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl_dom_suspend.c | 43 ++++++++++++++++++++++++++++++++-
+ tools/libs/light/libxl_dom_suspend.c | 43 ++++++++++++++++++++++++++++++++-
  1 file changed, 42 insertions(+), 1 deletion(-)
 
-diff --git a/tools/libxl/libxl_dom_suspend.c b/tools/libxl/libxl_dom_suspend.c
+diff --git a/tools/libs/light/libxl_dom_suspend.c b/tools/libs/light/libxl_dom_suspend.c
 index 25d1571895..3b20f7f3f5 100644
---- a/tools/libxl/libxl_dom_suspend.c
-+++ b/tools/libxl/libxl_dom_suspend.c
+--- a/tools/libs/light/libxl_dom_suspend.c
++++ b/tools/libs/light/libxl_dom_suspend.c
 @@ -75,6 +75,7 @@ void libxl__domain_suspend_device_model(libxl__egc *egc,
      STATE_AO_GC(dsps->ao);
      int rc = 0;

@@ -17,8 +17,8 @@ Signed-off-by: Marek Marczykowski <marmarek@invisiblethingslab.com>
 
 diff --git a/tools/libvchan/io.c b/tools/libvchan/io.c
 index 3c8d236..3040099 100644
---- a/tools/libvchan/io.c
-+++ b/tools/libvchan/io.c
+--- a/tools/libs/vchan/io.c
++++ b/tools/libs/vchan/io.c
 @@ -324,9 +324,11 @@ void libxenvchan_close(struct libxenvchan *ctrl)
  	if (!ctrl)
  		return;

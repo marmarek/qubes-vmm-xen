@@ -15,14 +15,14 @@ needed.
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl.c    |  4 +++-
- tools/libxl/libxl_dm.c | 51 ++++++++++++++++++++++++++++++++++++--------------
+ tools/libs/light/libxl.c    |  4 +++-
+ tools/libs/light/libxl_dm.c | 51 ++++++++++++++++++++++++++++++++++++--------------
  2 files changed, 40 insertions(+), 15 deletions(-)
 
-diff --git a/tools/libxl/libxl_disk.c b/tools/libxl/libxl_disk.c
+diff --git a/tools/libs/light/libxl_disk.c b/tools/libs/light/libxl_disk.c
 index 34bcbf2..66a3ded 100644
---- a/tools/libxl/libxl_disk.c
-+++ b/tools/libxl/libxl_disk.c
+--- a/tools/libs/light/libxl_disk.c
++++ b/tools/libs/light/libxl_disk.c
 @@ -1161,10 +1161,12 @@ static void disk_eject_xswatch_callback(libxl__egc *egc, libxl__ev_xswatch *w,
              "/local/domain/%d/backend/%" TOSTRING(BACKEND_STRING_SIZE)
             "[a-z]/%*d/%*d",

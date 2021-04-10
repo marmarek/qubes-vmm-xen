@@ -15,13 +15,13 @@ save/restore stubdom channels as a price for no qemu in dom0.
 
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl_dm.c | 3 +++
+ tools/libs/light/libxl_dm.c | 3 +++
  1 file changed, 3 insertions(+)
 
-diff --git a/tools/libxl/libxl_dm.c b/tools/libxl/libxl_dm.c
+diff --git a/tools/libs/light/libxl_dm.c b/tools/libs/light/libxl_dm.c
 index 52e7592..86f16bc 100644
---- a/tools/libxl/libxl_dm.c
-+++ b/tools/libxl/libxl_dm.c
+--- a/tools/libs/light/libxl_dm.c
++++ b/tools/libs/light/libxl_dm.c
 @@ -1083,6 +1083,9 @@ static void spawn_stub_launch_dm(libxl__egc *egc,
          while (*(serial++))
              num_console++;

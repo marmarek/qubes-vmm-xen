@@ -1,5 +1,5 @@
---- a/tools/libxl/libxl_create.c
-+++ b/tools/libxl/libxl_create.c
+--- a/tools/libs/light/libxl_create.c
++++ b/tools/libs/light/libxl_create.c
 @@ -365,6 +365,18 @@ int libxl__domain_build_info_setdefault(
              libxl_defbool_setdefault(&b_info->u.hvm.sdl.opengl, false);
          }
@@ -19,8 +19,8 @@
          if (libxl_defbool_val(b_info->u.hvm.spice.enable)) {
              libxl_defbool_setdefault(&b_info->u.hvm.spice.disable_ticketing,
                                       false);
---- a/tools/libxl/libxl_dm.c
-+++ b/tools/libxl/libxl_dm.c
+--- a/tools/libs/light/libxl_dm.c
++++ b/tools/libs/light/libxl_dm.c
 @@ -1272,6 +1272,13 @@ static int libxl__build_device_model_arg
              flexarray_append(dm_args, "-net");
              flexarray_append(dm_args, "none");
@@ -35,8 +35,8 @@
      } else {
          if (!sdl && !vnc) {
              flexarray_append(dm_args, "-nographic");
---- a/tools/libxl/libxl_types.idl
-+++ b/tools/libxl/libxl_types.idl
+--- a/tools/libs/light/libxl_types.idl
++++ b/tools/libs/light/libxl_types.idl
 @@ -301,6 +301,13 @@ libxl_sdl_info = Struct("sdl_info", [
      ("xauthority",    string),
      ])

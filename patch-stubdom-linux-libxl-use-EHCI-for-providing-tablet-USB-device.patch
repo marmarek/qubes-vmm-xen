@@ -11,13 +11,13 @@ Linux behave correctly.
 Signed-off-by: alcreator <24826469+alcreator@users.noreply.github.com>
 Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 ---
- tools/libxl/libxl_dm.c | 14 ++++++++------
+ tools/libs/light/libxl_dm.c | 14 ++++++++------
  1 file changed, 8 insertions(+), 6 deletions(-)
 
-diff --git a/tools/libxl/libxl_dm.c b/tools/libxl/libxl_dm.c
+diff --git a/tools/libs/light/libxl_dm.c b/tools/libs/light/libxl_dm.c
 index 0fdc2f837c..b888d3b011 100644
---- a/tools/libxl/libxl_dm.c
-+++ b/tools/libxl/libxl_dm.c
+--- a/tools/libs/light/libxl_dm.c
++++ b/tools/libs/light/libxl_dm.c
 @@ -1431,18 +1431,20 @@ static int libxl__build_device_model_args_new(libxl__gc *gc,
                  LOGD(ERROR, guest_domid, "Both usbdevice and usbdevice_list set");
                  return ERROR_INVAL;

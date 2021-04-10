@@ -55,7 +55,7 @@ Signed-off-by: Marcus of Wetware Labs <marcus@wetwa.re>
      union string section = { NULL }, name;
 -    bool base_video = false;
 +    bool base_video = false, exit_boot_services = true;
-     char *option_str;
+     const char *option_str;
      bool use_cfg_file;
 
 @@ -971,6 +974,8 @@
