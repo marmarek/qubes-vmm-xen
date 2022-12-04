@@ -1,0 +1,149 @@
+From d0c7a3e239394e330de40d85edddd7f284ef4e58 Mon Sep 17 00:00:00 2001
+Message-Id: <d0c7a3e239394e330de40d85edddd7f284ef4e58.1670172248.git.demi@invisiblethingslab.com>
+From: Demi Marie Obenour <demi@invisiblethingslab.com>
+Date: Sun, 4 Dec 2022 07:49:05 -0500
+Subject: [PATCH 1/2] Reduce hard-coding of PAT value
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This makes the code easier to read and more robust against any future
+changes to this value.  No change in behavior (modulo bugs).
+
+To: Xen developer discussion <xen-devel@lists.xenproject.org>
+Cc: Jan Beulich <jbeulich@suse.com>
+Cc: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: "Roger Pau Monné" <roger.pau@citrix.com>
+Cc: Wei Liu <wl@xen.org>
+Cc: George Dunlap <george.dunlap@citrix.com>
+Cc: Tim Deegan <tim@xen.org>
+Cc: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+Signed-off-by: Demi Marie Obenour <demi@invisiblethingslab.com>
+---
+ xen/arch/x86/mm.c              | 11 ++++-------
+ xen/arch/x86/mm/p2m-pt.c       |  6 +++---
+ xen/arch/x86/mm/shadow/multi.c | 10 +++++-----
+ xen/common/efi/boot.c          | 10 +++++-----
+ 4 files changed, 17 insertions(+), 20 deletions(-)
+
+diff --git a/xen/arch/x86/mm.c b/xen/arch/x86/mm.c
+index bd3026ec03c466d9965929f47cbcc810637842b9..0fbccb3ca5390aab4f7c7836714184384f60d636 100644
+--- a/xen/arch/x86/mm.c
++++ b/xen/arch/x86/mm.c
+@@ -935,13 +935,10 @@ get_page_from_l1e(
+ 
+         switch ( l1f & PAGE_CACHE_ATTRS )
+         {
+-        case 0: /* WB */
+-            flip |= _PAGE_PWT | _PAGE_PCD;
+-            break;
+-        case _PAGE_PWT: /* WT */
+-        case _PAGE_PWT | _PAGE_PAT: /* WP */
+-            flip |= _PAGE_PCD | (l1f & _PAGE_PAT);
+-            break;
++        case _PAGE_WB: /* WB */
++        case _PAGE_WT: /* WT */
++        case _PAGE_WP: /* WP */
++            flip |= ( l1f & PAGE_CACHE_ATTRS ) ^ _PAGE_UC;
+         }
+ 
+         return flip;
+diff --git a/xen/arch/x86/mm/p2m-pt.c b/xen/arch/x86/mm/p2m-pt.c
+index 28d18758204503ca624b4352ef49351a2efff71f..c0edd8d99d05bf5cab0627cad1142c074f002df1 100644
+--- a/xen/arch/x86/mm/p2m-pt.c
++++ b/xen/arch/x86/mm/p2m-pt.c
+@@ -98,13 +98,13 @@ static unsigned long p2m_type_to_flags(const struct p2m_domain *p2m,
+         return flags | P2M_BASE_FLAGS | _PAGE_RW | _PAGE_NX_BIT;
+     case p2m_mmio_direct:
+         if ( !rangeset_contains_singleton(mmio_ro_ranges, mfn_x(mfn)) )
+-            flags |= _PAGE_RW;
++            flags |= _PAGE_RW | _PAGE_UCM;
+         else
+         {
+-            flags |= _PAGE_PWT;
++            flags |= _PAGE_UC;
+             ASSERT(!level);
+         }
+-        return flags | P2M_BASE_FLAGS | _PAGE_PCD;
++        return flags | P2M_BASE_FLAGS;
+     }
+ }
+ 
+diff --git a/xen/arch/x86/mm/shadow/multi.c b/xen/arch/x86/mm/shadow/multi.c
+index 99e410d999455d544a89a946d1df3bb42c364f12..e2612b790bb8ef389d0a3ea7f3cc657204a38eb3 100644
+--- a/xen/arch/x86/mm/shadow/multi.c
++++ b/xen/arch/x86/mm/shadow/multi.c
+@@ -562,7 +562,7 @@ _sh_propagate(struct vcpu *v,
+     if ( guest_nx_enabled(v) )
+         pass_thru_flags |= _PAGE_NX_BIT;
+     if ( level == 1 && !shadow_mode_refcounts(d) && mmio_mfn )
+-        pass_thru_flags |= _PAGE_PAT | _PAGE_PCD | _PAGE_PWT;
++        pass_thru_flags |= PAGE_CACHE_ATTRS;
+     sflags = gflags & pass_thru_flags;
+ 
+     /*
+@@ -575,7 +575,7 @@ _sh_propagate(struct vcpu *v,
+     {
+         int type;
+ 
+-        ASSERT(!(sflags & (_PAGE_PAT | _PAGE_PCD | _PAGE_PWT)));
++        ASSERT(!(sflags & PAGE_CACHE_ATTRS));
+ 
+         /* compute the PAT index for shadow page entry when VT-d is enabled
+          * and device assigned.
+@@ -667,8 +667,8 @@ _sh_propagate(struct vcpu *v,
+     else if ( p2mt == p2m_mmio_direct &&
+               rangeset_contains_singleton(mmio_ro_ranges, mfn_x(target_mfn)) )
+     {
+-        sflags &= ~(_PAGE_RW | _PAGE_PAT);
+-        sflags |= _PAGE_PCD | _PAGE_PWT;
++        sflags &= ~(_PAGE_RW | PAGE_CACHE_ATTRS);
++        sflags |= _PAGE_UC;
+     }
+ 
+     // protect guest page tables
+@@ -1200,7 +1200,7 @@ static int shadow_set_l1e(struct domain *d,
+         /* About to install a new reference */
+         if ( shadow_mode_refcounts(d) )
+         {
+-#define PAGE_FLIPPABLE (_PAGE_RW | _PAGE_PWT | _PAGE_PCD | _PAGE_PAT)
++#define PAGE_FLIPPABLE (_PAGE_RW | PAGE_CACHE_ATTRS)
+             int rc;
+ 
+             TRACE_SHADOW_PATH_FLAG(TRCE_SFLAG_SHADOW_L1_GET_REF);
+diff --git a/xen/common/efi/boot.c b/xen/common/efi/boot.c
+index d014027da832909dfdf0c534c5d6d3da253f977f..aab424559510708514e5b787f96d50ea0028daac 100644
+--- a/xen/common/efi/boot.c
++++ b/xen/common/efi/boot.c
+@@ -1738,21 +1738,21 @@ void __init efi_init_memory(void)
+         if ( desc->Attribute & EFI_MEMORY_WB )
+             /* nothing */;
+         else if ( desc->Attribute & EFI_MEMORY_WT )
+-            prot |= _PAGE_PWT | MAP_SMALL_PAGES;
++            prot |= _PAGE_WT | MAP_SMALL_PAGES;
+         else if ( desc->Attribute & EFI_MEMORY_WC )
+-            prot |= _PAGE_PAT | MAP_SMALL_PAGES;
++            prot |= _PAGE_WC | MAP_SMALL_PAGES;
+         else if ( desc->Attribute & (EFI_MEMORY_UC | EFI_MEMORY_UCE) )
+-            prot |= _PAGE_PWT | _PAGE_PCD | MAP_SMALL_PAGES;
++            prot |= _PAGE_UC | MAP_SMALL_PAGES;
+         else if ( efi_bs_revision >= EFI_REVISION(2, 5) &&
+                   (desc->Attribute & EFI_MEMORY_WP) )
+-            prot |= _PAGE_PAT | _PAGE_PWT | MAP_SMALL_PAGES;
++            prot |= _PAGE_WP | MAP_SMALL_PAGES;
+         else
+         {
+             printk(XENLOG_ERR "Unknown cachability for MFNs %#lx-%#lx%s\n",
+                    smfn, emfn - 1, efi_map_uc ? ", assuming UC" : "");
+             if ( !efi_map_uc )
+                 continue;
+-            prot |= _PAGE_PWT | _PAGE_PCD | MAP_SMALL_PAGES;
++            prot |= _PAGE_UC | MAP_SMALL_PAGES;
+         }
+ 
+         if ( desc->Attribute & (efi_bs_revision < EFI_REVISION(2, 5)
+-- 
+Sincerely,
+Demi Marie Obenour (she/her/hers)
+Invisible Things Lab
+

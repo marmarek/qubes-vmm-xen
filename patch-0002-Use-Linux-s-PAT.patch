@@ -1,0 +1,82 @@
+From bf9bf15d047f5053240d5cd5f33cf498a271e8d3 Mon Sep 17 00:00:00 2001
+Message-Id: <bf9bf15d047f5053240d5cd5f33cf498a271e8d3.1670172248.git.demi@invisiblethingslab.com>
+In-Reply-To: <d0c7a3e239394e330de40d85edddd7f284ef4e58.1670172248.git.demi@invisiblethingslab.com>
+References: <d0c7a3e239394e330de40d85edddd7f284ef4e58.1670172248.git.demi@invisiblethingslab.com>
+From: Demi Marie Obenour <demi@invisiblethingslab.com>
+Date: Sun, 4 Dec 2022 07:57:44 -0500
+Subject: [PATCH 2/2] Use Linux's PAT
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+This is purely for testing, to see if it works around a bug in i915.  It
+is not intended to be merged.
+
+To: Xen developer discussion <xen-devel@lists.xenproject.org>
+Cc: Jan Beulich <jbeulich@suse.com>
+Cc: Andrew Cooper <andrew.cooper3@citrix.com>
+Cc: "Roger Pau Monné" <roger.pau@citrix.com>
+Cc: Wei Liu <wl@xen.org>
+Cc: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+NOT-signed-off-by: DO NOT MERGE
+---
+ xen/include/asm-x86/page.h      |  4 ++--
+ xen/include/asm-x86/processor.h | 22 +++++++++++++++++++++-
+ 2 files changed, 23 insertions(+), 3 deletions(-)
+
+diff --git a/xen/include/asm-x86/page.h b/xen/include/asm-x86/page.h
+index 52551535a99128bbce6441c44b01f304b3a94210..e3a8f3d62fa70d11115fb7b1671886a8c4d2db43 100644
+--- a/xen/include/asm-x86/page.h
++++ b/xen/include/asm-x86/page.h
+@@ -346,11 +346,11 @@ void efi_update_l4_pgtable(unsigned int l4idx, l4_pgentry_t);
+ 
+ /* Memory types, encoded under Xen's choice of MSR_PAT. */
+ #define _PAGE_WB         (                                0)
+-#define _PAGE_WT         (                        _PAGE_PWT)
++#define _PAGE_WC         (                        _PAGE_PWT)
+ #define _PAGE_UCM        (            _PAGE_PCD            )
+ #define _PAGE_UC         (            _PAGE_PCD | _PAGE_PWT)
+-#define _PAGE_WC         (_PAGE_PAT                        )
+ #define _PAGE_WP         (_PAGE_PAT |             _PAGE_PWT)
++#define _PAGE_WT         (_PAGE_PAT | _PAGE_PCD | _PAGE_PWT)
+ 
+ /*
+  * Debug option: Ensure that granted mappings are not implicitly unmapped.
+diff --git a/xen/include/asm-x86/processor.h b/xen/include/asm-x86/processor.h
+index 3ff7cc5807e77d1d0b38a107a4b53e78d28a4fbf..31b95c4cf7eb9393127073173a7f7db0101dd5d7 100644
+--- a/xen/include/asm-x86/processor.h
++++ b/xen/include/asm-x86/processor.h
+@@ -96,7 +96,27 @@
+  * Host IA32_CR_PAT value to cover all memory types.  This is not the default
+  * MSR_PAT value, and is an ABI with PV guests.
+  */
+-#define XEN_MSR_PAT _AC(0x050100070406, ULL)
++#define XEN_MSR_PAT _AC(0x0407050600070106, ULL)
++
++#define XEN_MSR_PAT_UC  0x00
++#define XEN_MSR_PAT_WC  0x01
++#define XEN_MSR_PAT_RESERVED_1  0x02
++#define XEN_MSR_PAT_RESERVED_2  0x03
++#define XEN_MSR_PAT_WT  0x04
++#define XEN_MSR_PAT_WP  0x05
++#define XEN_MSR_PAT_WB  0x06
++#define XEN_MSR_PAT_UCM 0x07
++#if XEN_MSR_PAT != (XEN_MSR_PAT_WB  << 0x00 | \
++                    XEN_MSR_PAT_WC  << 0x08 | \
++                    XEN_MSR_PAT_UCM << 0x10 | \
++                    XEN_MSR_PAT_UC  << 0x18 | \
++                    XEN_MSR_PAT_WB  << 0x20 | \
++                    XEN_MSR_PAT_WP  << 0x28 | \
++                    XEN_MSR_PAT_UCM << 0x30 | \
++                    XEN_MSR_PAT_WT  << 0x38 | \
++                    0) || 0
++#error incorrect XEN_MSR_PAT
++#endif
+ 
+ #ifndef __ASSEMBLY__
+ 
+-- 
+Sincerely,
+Demi Marie Obenour (she/her/hers)
+Invisible Things Lab
+
