@@ -1,5 +1,5 @@
-From d0c7a3e239394e330de40d85edddd7f284ef4e58 Mon Sep 17 00:00:00 2001
-Message-Id: <d0c7a3e239394e330de40d85edddd7f284ef4e58.1670172248.git.demi@invisiblethingslab.com>
+From 33204e5eefe04f6a385af3bd1b3fd884ff5e32f7 Mon Sep 17 00:00:00 2001
+Message-Id: <33204e5eefe04f6a385af3bd1b3fd884ff5e32f7.1670298614.git.demi@invisiblethingslab.com>
 From: Demi Marie Obenour <demi@invisiblethingslab.com>
 Date: Sun, 4 Dec 2022 07:49:05 -0500
 Subject: [PATCH 1/2] Reduce hard-coding of PAT value
@@ -20,17 +20,64 @@ Cc: Tim Deegan <tim@xen.org>
 Cc: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
 Signed-off-by: Demi Marie Obenour <demi@invisiblethingslab.com>
 ---
- xen/arch/x86/mm.c              | 11 ++++-------
- xen/arch/x86/mm/p2m-pt.c       |  6 +++---
- xen/arch/x86/mm/shadow/multi.c | 10 +++++-----
- xen/common/efi/boot.c          | 10 +++++-----
- 4 files changed, 17 insertions(+), 20 deletions(-)
+ xen/arch/x86/mm.c               | 65 ++++++++++++++++++++++++++++-----
+ xen/arch/x86/mm/p2m-pt.c        |  6 +--
+ xen/arch/x86/mm/shadow/multi.c  | 10 ++---
+ xen/common/efi/boot.c           | 10 ++---
+ xen/include/asm-x86/processor.h | 10 +++++
+ 5 files changed, 79 insertions(+), 22 deletions(-)
 
 diff --git a/xen/arch/x86/mm.c b/xen/arch/x86/mm.c
-index bd3026ec03c466d9965929f47cbcc810637842b9..0fbccb3ca5390aab4f7c7836714184384f60d636 100644
+index bd3026ec03c466d9965929f47cbcc810637842b9..ee5e2f9f60bc53f2ace23d5bd65d271bc0e13354 100644
 --- a/xen/arch/x86/mm.c
 +++ b/xen/arch/x86/mm.c
-@@ -935,13 +935,10 @@ get_page_from_l1e(
+@@ -825,6 +825,45 @@ static int print_mmio_emul_range(unsigned long s, unsigned long e, void *arg)
+ }
+ #endif
+ 
++static void __init __maybe_unused build_assertions(void)
++{
++    /* A bunch of static assertions to check that the XEN_MSR_PAT is valid
++     * and consistent with the _PAGE_* macros */
++#define PAT_VALUE(v) (0xFF & (XEN_MSR_PAT >> (8 * (v))))
++#define BAD_VALUE(v) ((v) < 0 || (v) > 7 ||                                    \
++                      (v) == MSR_PAT_RESERVED_1 || (v) == MSR_PAT_RESERVED_2)
++#define BAD_PAT_VALUE(v) BUILD_BUG_ON(BAD_VALUE(PAT_VALUE(v)))
++    BAD_PAT_VALUE(0);
++    BAD_PAT_VALUE(1);
++    BAD_PAT_VALUE(2);
++    BAD_PAT_VALUE(3);
++    BAD_PAT_VALUE(4);
++    BAD_PAT_VALUE(5);
++    BAD_PAT_VALUE(6);
++    BAD_PAT_VALUE(7);
++#undef BAD_PAT_VALUE
++#undef BAD_VALUE
++#define PAT_SHIFT(page_value) (((page_value) & _PAGE_PAT) >> 5 |               \
++                               ((page_value) & (_PAGE_PCD | _PAGE_PWT)) >> 3)
++#define CHECK_PAGE_VALUE(page_value) do {                                      \
++    /* Check that the _PAGE_* macros only use bits from PAGE_CACHE_ATTRS */    \
++    BUILD_BUG_ON(((_PAGE_##page_value) & PAGE_CACHE_ATTRS) !=                  \
++                  (_PAGE_##page_value));                                       \
++    /* Check that the _PAGE_* are consistent with XEN_MSR_PAT */               \
++    BUILD_BUG_ON(PAT_VALUE(PAT_SHIFT(_PAGE_##page_value)) !=                   \
++                 (MSR_PAT_##page_value));                                      \
++} while (0)
++    CHECK_PAGE_VALUE(WT);
++    CHECK_PAGE_VALUE(WB);
++    CHECK_PAGE_VALUE(WC);
++    CHECK_PAGE_VALUE(UC);
++    CHECK_PAGE_VALUE(UCM);
++    CHECK_PAGE_VALUE(WP);
++#undef CHECK_PAGE_VALUE
++#undef PAT_SHIFT
++#undef PAT_VALUE
++}
++
+ /*
+  * get_page_from_l1e returns:
+  *   0  => success (page not present also counts as such)
+@@ -935,16 +974,24 @@ get_page_from_l1e(
  
          switch ( l1f & PAGE_CACHE_ATTRS )
          {
@@ -41,13 +88,29 @@ index bd3026ec03c466d9965929f47cbcc810637842b9..0fbccb3ca5390aab4f7c783671418438
 -        case _PAGE_PWT | _PAGE_PAT: /* WP */
 -            flip |= _PAGE_PCD | (l1f & _PAGE_PAT);
 -            break;
-+        case _PAGE_WB: /* WB */
-+        case _PAGE_WT: /* WT */
-+        case _PAGE_WP: /* WP */
-+            flip |= ( l1f & PAGE_CACHE_ATTRS ) ^ _PAGE_UC;
++        default:
++#ifndef NDEBUG
++            printk(XENLOG_G_WARNING
++                   "d%d: Guest tried to use bad cachability attribute %u for MFN %lx\n",
++                   l1e_owner->domain_id, l1f & PAGE_CACHE_ATTRS, mfn);
++            pv_inject_hw_exception(TRAP_gp_fault, 0);
++            return -EINVAL;
++#endif
++        case _PAGE_WT:
++        case _PAGE_WP:
++        case _PAGE_WB:
++            /* Force this to be uncachable */
++            return flip | ( (l1f & PAGE_CACHE_ATTRS) ^ _PAGE_UC );
++        case _PAGE_WC:
++        case _PAGE_UC:
++        case _PAGE_UCM:
++            return flip;
          }
+-
+-        return flip;
+     }
  
-         return flip;
+     if ( unlikely((real_pg_owner != pg_owner) &&
 diff --git a/xen/arch/x86/mm/p2m-pt.c b/xen/arch/x86/mm/p2m-pt.c
 index 28d18758204503ca624b4352ef49351a2efff71f..c0edd8d99d05bf5cab0627cad1142c074f002df1 100644
 --- a/xen/arch/x86/mm/p2m-pt.c
@@ -142,6 +205,27 @@ index d014027da832909dfdf0c534c5d6d3da253f977f..aab424559510708514e5b787f96d50ea
          }
  
          if ( desc->Attribute & (efi_bs_revision < EFI_REVISION(2, 5)
+diff --git a/xen/include/asm-x86/processor.h b/xen/include/asm-x86/processor.h
+index 3ff7cc5807e77d1d0b38a107a4b53e78d28a4fbf..d7c89ff54e6e9541eea88f6ed54c2f1c95dadb28 100644
+--- a/xen/include/asm-x86/processor.h
++++ b/xen/include/asm-x86/processor.h
+@@ -92,6 +92,16 @@
+                           X86_EFLAGS_NT|X86_EFLAGS_DF|X86_EFLAGS_IF|    \
+                           X86_EFLAGS_TF)
+ 
++/* Individual entries in IA32_CR_PAT */
++#define MSR_PAT_UC  _AC(0x00, ULL)
++#define MSR_PAT_WC  _AC(0x01, ULL)
++#define MSR_PAT_RESERVED_1  _AC(0x02, ULL)
++#define MSR_PAT_RESERVED_2  _AC(0x03, ULL)
++#define MSR_PAT_WT  _AC(0x04, ULL)
++#define MSR_PAT_WP  _AC(0x05, ULL)
++#define MSR_PAT_WB  _AC(0x06, ULL)
++#define MSR_PAT_UCM _AC(0x07, ULL)
++
+ /*
+  * Host IA32_CR_PAT value to cover all memory types.  This is not the default
+  * MSR_PAT value, and is an ABI with PV guests.
 -- 
 Sincerely,
 Demi Marie Obenour (she/her/hers)
