@@ -28,17 +28,13 @@ diff --git a/xen/include/asm-x86/page.h b/xen/include/asm-x86/page.h
 index 52551535a99128bbce6441c44b01f304b3a94210..e3a8f3d62fa70d11115fb7b1671886a8c4d2db43 100644
 --- a/xen/include/asm-x86/page.h
 +++ b/xen/include/asm-x86/page.h
-@@ -346,11 +346,11 @@ void efi_update_l4_pgtable(unsigned int l4idx, l4_pgentry_t);
- 
- /* Memory types, encoded under Xen's choice of MSR_PAT. */
- #define _PAGE_WB         (                                0)
--#define _PAGE_WT         (                        _PAGE_PWT)
-+#define _PAGE_WC         (                        _PAGE_PWT)
+@@ -346,8 +346,8 @@ void efi_update_l4_pgtable(unsigned int l4idx, l4_pgentry_t);
+ #define _PAGE_WT         (                        _PAGE_PWT)
  #define _PAGE_UCM        (            _PAGE_PCD            )
  #define _PAGE_UC         (            _PAGE_PCD | _PAGE_PWT)
 -#define _PAGE_WC         (_PAGE_PAT                        )
  #define _PAGE_WP         (_PAGE_PAT |             _PAGE_PWT)
-+#define _PAGE_WT         (_PAGE_PAT | _PAGE_PCD | _PAGE_PWT)
++#define _PAGE_WC         (_PAGE_PAT | _PAGE_PCD | _PAGE_PWT)
  
  /*
   * Debug option: Ensure that granted mappings are not implicitly unmapped.
@@ -51,16 +47,16 @@ index d7c89ff54e6e9541eea88f6ed54c2f1c95dadb28..bb6538c6b15c0fc2b6d47c4c7e4d5fcd
   * MSR_PAT value, and is an ABI with PV guests.
   */
 -#define XEN_MSR_PAT _AC(0x050100070406, ULL)
-+#define XEN_MSR_PAT _AC(0x0407050600070106, ULL)
++#define XEN_MSR_PAT _AC(0x0100050600070406, ULL)
 +
 +#if XEN_MSR_PAT != (MSR_PAT_WB  << 0x00 | \
-+                    MSR_PAT_WC  << 0x08 | \
++                    MSR_PAT_WT  << 0x08 | \
 +                    MSR_PAT_UCM << 0x10 | \
 +                    MSR_PAT_UC  << 0x18 | \
 +                    MSR_PAT_WB  << 0x20 | \
 +                    MSR_PAT_WP  << 0x28 | \
-+                    MSR_PAT_UCM << 0x30 | \
-+                    MSR_PAT_WT  << 0x38 | \
++                    MSR_PAT_UC  << 0x30 | \
++                    MSR_PAT_WC  << 0x38 | \
 +                    0) || 0
 +#error incorrect XEN_MSR_PAT
 +#endif
