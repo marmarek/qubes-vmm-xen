@@ -1,0 +1,69 @@
+From 2c90d4457071ba80cbfbb2d44dba0089cfe6e39b Mon Sep 17 00:00:00 2001
+From: Jason Andryuk <jandryuk@gmail.com>
+Date: Sat, 6 Mar 2021 09:40:26 -0500
+Subject: [PATCH 10/14] libxc: Add xc_set_cpufreq_hwp
+
+Add xc_set_cpufreq_hwp to allow calling xen_systctl_pm_op
+SET_CPUFREQ_HWP.
+
+Signed-off-by: Jason Andryuk <jandryuk@gmail.com>
+
+---
+Am I allowed to do set_hwp = *set_hwp struct assignment?
+---
+ tools/libxc/include/xenctrl.h |  4 ++++
+ tools/libxc/xc_pm.c           | 18 ++++++++++++++++++
+ 2 files changed, 22 insertions(+)
+
+diff --git a/tools/libxc/include/xenctrl.h b/tools/libxc/include/xenctrl.h
+index 171c7e2cbc4c..410a4eb53f6c 100644
+--- a/tools/libxc/include/xenctrl.h
++++ b/tools/libxc/include/xenctrl.h
+@@ -1923,11 +1923,15 @@ struct xc_get_cpufreq_para {
+     int32_t turbo_enabled;
+ };
+ 
++typedef struct xen_set_hwp_para xc_set_hwp_para_t;
++
+ int xc_get_cpufreq_para(xc_interface *xch, int cpuid,
+                         struct xc_get_cpufreq_para *user_para);
+ int xc_set_cpufreq_gov(xc_interface *xch, int cpuid, char *govname);
+ int xc_set_cpufreq_para(xc_interface *xch, int cpuid,
+                         int ctrl_type, int ctrl_value);
++int xc_set_cpufreq_hwp(xc_interface *xch, int cpuid,
++                       xc_set_hwp_para_t *set_hwp);
+ int xc_get_cpufreq_avgfreq(xc_interface *xch, int cpuid, int *avg_freq);
+ 
+ int xc_set_sched_opt_smt(xc_interface *xch, uint32_t value);
+diff --git a/tools/libxc/xc_pm.c b/tools/libxc/xc_pm.c
+index 76d7eb7f265d..407a24d2aa66 100644
+--- a/tools/libxc/xc_pm.c
++++ b/tools/libxc/xc_pm.c
+@@ -330,6 +330,24 @@ int xc_set_cpufreq_para(xc_interface *xch, int cpuid,
+     return xc_sysctl(xch, &sysctl);
+ }
+ 
++int xc_set_cpufreq_hwp(xc_interface *xch, int cpuid,
++                       xc_set_hwp_para_t *set_hwp)
++{
++    DECLARE_SYSCTL;
++
++    if ( !xch )
++    {
++        errno = EINVAL;
++        return -1;
++    }
++    sysctl.cmd = XEN_SYSCTL_pm_op;
++    sysctl.u.pm_op.cmd = SET_CPUFREQ_HWP;
++    sysctl.u.pm_op.cpuid = cpuid;
++    sysctl.u.pm_op.u.set_hwp = *set_hwp;
++
++    return xc_sysctl(xch, &sysctl);
++}
++
+ int xc_get_cpufreq_avgfreq(xc_interface *xch, int cpuid, int *avg_freq)
+ {
+     int ret = 0;
+-- 
+2.37.3
+

@@ -1,0 +1,59 @@
+From a258553b051693bf4ca426980eab59906bc4305b Mon Sep 17 00:00:00 2001
+From: Jason Andryuk <jandryuk@gmail.com>
+Date: Mon, 22 Feb 2021 13:08:43 -0500
+Subject: [PATCH 01/14] cpufreq: Allow restricting to internal governors only
+
+For hwp, the standard governors are not usable, and only the internal
+one is applicable.  Add the cpufreq_governor_internal boolean to
+indicate when an internal governor, like hwp-internal, will be used.
+This is set during presmp_initcall, so that it can suppress governor
+registration during initcall.  Only a governor with a name containing
+"internal" will be allowed in that case.
+
+This way, the unuseable governors are not registered, so they internal
+one is the only one returned to userspace.  This means incompatible
+governors won't be advertised to userspace.
+
+Signed-off-by: Jason Andryuk <jandryuk@gmail.com>
+---
+ xen/drivers/cpufreq/cpufreq.c      | 4 ++++
+ xen/include/acpi/cpufreq/cpufreq.h | 1 +
+ 2 files changed, 5 insertions(+)
+
+diff --git a/xen/drivers/cpufreq/cpufreq.c b/xen/drivers/cpufreq/cpufreq.c
+index e630a4741958..b1f668b7150b 100644
+--- a/xen/drivers/cpufreq/cpufreq.c
++++ b/xen/drivers/cpufreq/cpufreq.c
+@@ -57,6 +57,7 @@ struct cpufreq_dom {
+ };
+ static LIST_HEAD_READ_MOSTLY(cpufreq_dom_list_head);
+ 
++bool __read_mostly cpufreq_governor_internal;
+ struct cpufreq_governor *__read_mostly cpufreq_opt_governor;
+ LIST_HEAD_READ_MOSTLY(cpufreq_governor_list);
+ 
+@@ -122,6 +123,9 @@ int __init cpufreq_register_governor(struct cpufreq_governor *governor)
+     if (!governor)
+         return -EINVAL;
+ 
++    if (cpufreq_governor_internal && strstr(governor->name, "internal") == NULL)
++        return -EINVAL;
++
+     if (__find_governor(governor->name) != NULL)
+         return -EEXIST;
+ 
+diff --git a/xen/include/acpi/cpufreq/cpufreq.h b/xen/include/acpi/cpufreq/cpufreq.h
+index e88b20bfed4f..56df5eebedc3 100644
+--- a/xen/include/acpi/cpufreq/cpufreq.h
++++ b/xen/include/acpi/cpufreq/cpufreq.h
+@@ -115,6 +115,7 @@ extern struct cpufreq_governor cpufreq_gov_dbs;
+ extern struct cpufreq_governor cpufreq_gov_userspace;
+ extern struct cpufreq_governor cpufreq_gov_performance;
+ extern struct cpufreq_governor cpufreq_gov_powersave;
++extern bool cpufreq_governor_internal;
+ 
+ extern struct list_head cpufreq_governor_list;
+ 
+-- 
+2.37.3
+

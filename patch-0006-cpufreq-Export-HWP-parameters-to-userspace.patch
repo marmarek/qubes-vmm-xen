@@ -1,0 +1,134 @@
+From 9920a11dd1372fc7239ebee6252ccec29c0cb28c Mon Sep 17 00:00:00 2001
+From: Jason Andryuk <jandryuk@gmail.com>
+Date: Mon, 1 Mar 2021 07:59:32 -0500
+Subject: [PATCH 06/14] cpufreq: Export HWP parameters to userspace
+
+Extend xen_get_cpufreq_para to return hwp parameters.  These match the
+hardware rather closely.
+
+We need the hw_features bitmask to indicated fields supported by the
+actual hardware.
+
+The use of uint8_t parameters matches the hardware size.  uint32_t
+entries grows the sysctl_t past the build assertion in setup.c.  The
+uint8_t ranges are supported across multiple generations, so hopefully
+they won't change.
+
+Increment XEN_SYSCTL_INTERFACE_VERSION for the new fields.
+
+Signed-off-by: Jason Andryuk <jandryuk@gmail.com>
+
+Marek: do not increment XEN_SYSCTL_INTERFACE_VERSION, to not conflict
+with further updates; the new part of the union is guarded with governor
+check anyway (both at Xen and userspace sides), and the overall size of
+xen_get_cpufreq_para struct hasn't changed.
+---
+ xen/arch/x86/acpi/cpufreq/hwp.c    | 24 ++++++++++++++++++++++++
+ xen/drivers/acpi/pmstat.c          |  6 ++++++
+ xen/include/acpi/cpufreq/cpufreq.h |  3 +++
+ xen/include/public/sysctl.h        | 18 ++++++++++++++++++
+ 4 files changed, 51 insertions(+)
+
+diff --git a/xen/arch/x86/acpi/cpufreq/hwp.c b/xen/arch/x86/acpi/cpufreq/hwp.c
+index f8e6fdbd416f..92222d6d85cb 100644
+--- a/xen/arch/x86/acpi/cpufreq/hwp.c
++++ b/xen/arch/x86/acpi/cpufreq/hwp.c
+@@ -523,6 +523,30 @@ static const struct cpufreq_driver __initconstrel hwp_cpufreq_driver =
+     .update = hwp_cpufreq_update,
+ };
+ 
++int get_hwp_para(struct cpufreq_policy *policy, struct xen_hwp_para *hwp_para)
++{
++    unsigned int cpu = policy->cpu;
++    struct hwp_drv_data *data = hwp_drv_data[cpu];
++
++    if ( data == NULL )
++        return -EINVAL;
++
++    hwp_para->hw_feature        =
++        feature_hwp_activity_window ? XEN_SYSCTL_HWP_FEAT_ACT_WINDOW  : 0 |
++        feature_hwp_energy_perf     ? XEN_SYSCTL_HWP_FEAT_ENERGY_PERF : 0;
++    hwp_para->hw_lowest         = data->hw_lowest;
++    hwp_para->hw_most_efficient = data->hw_most_efficient;
++    hwp_para->hw_guaranteed     = data->hw_guaranteed;
++    hwp_para->hw_highest        = data->hw_highest;
++    hwp_para->minimum           = data->minimum;
++    hwp_para->maximum           = data->maximum;
++    hwp_para->energy_perf       = data->energy_perf;
++    hwp_para->activity_window   = data->activity_window;
++    hwp_para->desired           = data->desired;
++
++    return 0;
++}
++
+ int hwp_register_driver(void)
+ {
+     int ret;
+diff --git a/xen/drivers/acpi/pmstat.c b/xen/drivers/acpi/pmstat.c
+index 2f528f9ca354..4c6ae5d76878 100644
+--- a/xen/drivers/acpi/pmstat.c
++++ b/xen/drivers/acpi/pmstat.c
+@@ -290,6 +290,12 @@ static int get_cpufreq_para(struct xen_sysctl_pm_op *op)
+             &op->u.get_para.u.ondemand.sampling_rate,
+             &op->u.get_para.u.ondemand.up_threshold);
+     }
++
++    if ( !strnicmp(op->u.get_para.scaling_governor,
++                   "hwp-internal", CPUFREQ_NAME_LEN) )
++    {
++        ret = get_hwp_para(policy, &op->u.get_para.u.hwp_para);
++    }
+     op->u.get_para.turbo_enabled = cpufreq_get_turbo_status(op->cpuid);
+ 
+     return ret;
+diff --git a/xen/include/acpi/cpufreq/cpufreq.h b/xen/include/acpi/cpufreq/cpufreq.h
+index b91859ce5d57..42146ca2cf9b 100644
+--- a/xen/include/acpi/cpufreq/cpufreq.h
++++ b/xen/include/acpi/cpufreq/cpufreq.h
+@@ -246,4 +246,7 @@ int write_userspace_scaling_setspeed(unsigned int cpu, unsigned int freq);
+ void cpufreq_dbs_timer_suspend(void);
+ void cpufreq_dbs_timer_resume(void);
+ 
++/********************** hwp hypercall helper *************************/
++int get_hwp_para(struct cpufreq_policy *policy, struct xen_hwp_para *hwp_para);
++
+ #endif /* __XEN_CPUFREQ_PM_H__ */
+diff --git a/xen/include/public/sysctl.h b/xen/include/public/sysctl.h
+index 7439cc154f70..87fb67c21697 100644
+--- a/xen/include/public/sysctl.h
++++ b/xen/include/public/sysctl.h
+@@ -300,6 +300,23 @@ struct xen_ondemand {
+     uint32_t up_threshold;
+ };
+ 
++struct xen_hwp_para {
++    uint16_t activity_window; /* 7bit mantissa and 3bit exponent */
++#define XEN_SYSCTL_HWP_FEAT_ENERGY_PERF (1 << 0) /* energy_perf range 0-255 if
++                                                    1. Otherwise 0-15 */
++#define XEN_SYSCTL_HWP_FEAT_ACT_WINDOW  (1 << 1) /* activity_window supported
++                                                    if 1 */
++    uint8_t hw_feature; /* bit flags for features */
++    uint8_t hw_lowest;
++    uint8_t hw_most_efficient;
++    uint8_t hw_guaranteed;
++    uint8_t hw_highest;
++    uint8_t minimum;
++    uint8_t maximum;
++    uint8_t desired;
++    uint8_t energy_perf;
++};
++
+ /*
+  * cpufreq para name of this structure named
+  * same as sysfs file name of native linux
+@@ -331,6 +348,7 @@ struct xen_get_cpufreq_para {
+     union {
+         struct  xen_userspace userspace;
+         struct  xen_ondemand ondemand;
++        struct  xen_hwp_para hwp_para;
+     } u;
+ 
+     int32_t turbo_enabled;
+-- 
+2.37.3
+

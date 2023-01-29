@@ -1,0 +1,52 @@
+From fcc53e9f0ffe3855b27a7f48e1b2b58904e903d8 Mon Sep 17 00:00:00 2001
+From: Jason Andryuk <jandryuk@gmail.com>
+Date: Mon, 1 Mar 2021 16:29:12 -0500
+Subject: [PATCH 03/14] cpufreq: Export intel_feature_detect
+
+Export feature_detect as intel_feature_detect so it can be re-used by
+HWP.
+
+Signed-off-by: Jason Andryuk <jandryuk@gmail.com>
+---
+ xen/arch/x86/acpi/cpufreq/cpufreq.c       | 4 ++--
+ xen/include/acpi/cpufreq/processor_perf.h | 2 ++
+ 2 files changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/xen/arch/x86/acpi/cpufreq/cpufreq.c b/xen/arch/x86/acpi/cpufreq/cpufreq.c
+index 5eac2f732132..8aae9b534d46 100644
+--- a/xen/arch/x86/acpi/cpufreq/cpufreq.c
++++ b/xen/arch/x86/acpi/cpufreq/cpufreq.c
+@@ -340,7 +340,7 @@ static unsigned int get_cur_freq_on_cpu(unsigned int cpu)
+     return extract_freq(get_cur_val(cpumask_of(cpu)), data);
+ }
+ 
+-static void feature_detect(void *info)
++void intel_feature_detect(void *info)
+ {
+     struct cpufreq_policy *policy = info;
+     unsigned int eax;
+@@ -596,7 +596,7 @@ acpi_cpufreq_cpu_init(struct cpufreq_policy *policy)
+     /* Check for APERF/MPERF support in hardware
+      * also check for boost support */
+     if (c->x86_vendor == X86_VENDOR_INTEL && c->cpuid_level >= 6)
+-        on_selected_cpus(cpumask_of(cpu), feature_detect, policy, 1);
++        on_selected_cpus(cpumask_of(cpu), intel_feature_detect, policy, 1);
+ 
+     /*
+      * the first call to ->target() should result in us actually
+diff --git a/xen/include/acpi/cpufreq/processor_perf.h b/xen/include/acpi/cpufreq/processor_perf.h
+index d8a1ba68a6bd..e2c08f0e6d5d 100644
+--- a/xen/include/acpi/cpufreq/processor_perf.h
++++ b/xen/include/acpi/cpufreq/processor_perf.h
+@@ -7,6 +7,8 @@
+ 
+ #define XEN_PX_INIT 0x80000000
+ 
++void intel_feature_detect(void *info);
++
+ int powernow_cpufreq_init(void);
+ unsigned int powernow_register_driver(void);
+ unsigned int get_measured_perf(unsigned int cpu, unsigned int flag);
+-- 
+2.37.3
+

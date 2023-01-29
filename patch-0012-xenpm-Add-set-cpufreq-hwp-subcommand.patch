@@ -1,0 +1,290 @@
+From 3c215b537ff68e1316dc64b6384362581fa0c363 Mon Sep 17 00:00:00 2001
+From: Jason Andryuk <jandryuk@gmail.com>
+Date: Sat, 6 Mar 2021 09:42:32 -0500
+Subject: [PATCH 12/14] xenpm: Add set-cpufreq-hwp subcommand
+
+set-cpufreq-hwp allows setting the Hardware P-State (HWP) parameters.
+
+It can be run on all or just a single cpu.  There are presets of
+balance, powersave & performance.  Those can be further tweaked by
+param:val arguments as explained in the usage description.
+
+Parameter names are just checked to the first 3 characters to shorten
+typing.
+
+Some options are hardware dependent, and ranges can be found in
+get-cpufreq-para.
+
+Signed-off-by: Jason Andryuk <jandryuk@gmail.com>
+---
+ tools/misc/xenpm.c | 240 +++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 240 insertions(+)
+
+diff --git a/tools/misc/xenpm.c b/tools/misc/xenpm.c
+index a686f8f46eeb..d3bcaf3b5843 100644
+--- a/tools/misc/xenpm.c
++++ b/tools/misc/xenpm.c
+@@ -67,6 +67,25 @@ void show_help(void)
+             " set-max-cstate        <num>|'unlimited' [<num2>|'unlimited']\n"
+             "                                     set the C-State limitation (<num> >= 0) and\n"
+             "                                     optionally the C-sub-state limitation (<num2> >= 0)\n"
++            " set-cpufreq-hwp       [cpuid] [balance|performance|powersave] <param:val>*\n"
++            "                                     set Hardware P-State (HWP) parameters\n"
++            "                                     optionally a preset of one of\n"
++            "                                       balance|performance|powersave\n"
++            "                                     an optional list of param:val arguments\n"
++            "                                       minimum:N  hw_lowest ... hw_highest\n"
++            "                                       maximum:N  hw_lowest ... hw_highest\n"
++            "                                       desired:N  hw_lowest ... hw_highest\n"
++            "                                           Set explicit performance target.\n"
++            "                                           non-zero disables auto-HWP mode.\n"
++            "                                       energy_perf:0-255 (or 0-15)\n"
++            "                                                   energy/performance hint\n"
++            "                                                   lower favor performance\n"
++            "                                                   higher favor powersave\n"
++            "                                                   127 (or 7) balance\n"
++            "                                       act_window:N{,m,u}s range 0us-1270s\n"
++            "                                           window for internal calculations.\n"
++            "                                           0 lets the hardware decide.\n"
++            "                                     get-cpufreq-para returns hw_lowest/highest.\n"
+             " start [seconds]                     start collect Cx/Px statistics,\n"
+             "                                     output after CTRL-C or SIGINT or several seconds.\n"
+             " enable-turbo-mode     [cpuid]       enable Turbo Mode for processors that support it.\n"
+@@ -1309,6 +1328,226 @@ void disable_turbo_mode(int argc, char *argv[])
+                 errno, strerror(errno));
+ }
+ 
++/*
++ * Parse activity_window:NNN{us,ms,s} and validate range.
++ *
++ * Activity window is a 7bit mantissa (0-127) with a 3bit exponent (0-7) base
++ * 10 in microseconds.  So the range is 1 microsecond to 1270 seconds.  A value
++ * of 0 lets the hardware autonomously select the window.
++ *
++ * Return 0 on success
++ *       -1 on error
++ *        1 Not activity_window. i.e. try parsing as another argument
++ */
++static int parse_activity_window(xc_set_hwp_para_t *set_hwp, char *p)
++{
++    char *param = NULL, *val = NULL, *suffix = NULL;
++    unsigned int u;
++    unsigned int exponent = 0;
++    unsigned int multiplier = 1;
++    int ret;
++
++    ret = sscanf(p, "%m[a-z_A-Z]:%ms", &param, &val);
++    if ( ret != 2 )
++    {
++        return -1;
++    }
++
++    if ( strncasecmp(param, "act", 3) != 0 )
++    {
++        ret = 1;
++
++        goto out;
++    }
++
++    free(param);
++    param = NULL;
++
++    ret = sscanf(val, "%u%ms", &u, &suffix);
++    if ( ret != 1 && ret != 2 )
++    {
++        fprintf(stderr, "invalid activity window: %s\n", val);
++
++        ret = -1;
++
++        goto out;
++    }
++
++    if ( ret == 2 && suffix )
++    {
++        if ( strcasecmp(suffix, "s") == 0 )
++        {
++            multiplier = 1000 * 1000;
++            exponent = 6;
++        }
++        else if ( strcasecmp(suffix, "ms") == 0 )
++        {
++            multiplier = 1000;
++            exponent = 3;
++        }
++        else if ( strcasecmp(suffix, "us") == 0 )
++        {
++            multiplier = 1;
++            exponent = 0;
++        }
++        else
++        {
++            fprintf(stderr, "invalid activity window units: %s\n", suffix);
++
++            ret = -1;
++            goto out;
++        }
++    }
++
++    if ( u > 1270 * 1000 * 1000 / multiplier )
++    {
++        fprintf(stderr, "activity window %s too large\n", val);
++
++        ret = -1;
++        goto out;
++    }
++
++    /* looking for 7 bits of mantissa and 3 bits of exponent */
++    while ( u > 127 )
++    {
++        u /= 10;
++        exponent += 1;
++    }
++
++    set_hwp->activity_window = ( exponent & 0x7 ) << 7 | ( u & 0x7f );
++    set_hwp->set_params |= XEN_SYSCTL_HWP_SET_ACT_WINDOW;
++
++    ret = 0;
++
++ out:
++    free(suffix);
++    free(param);
++    free(val);
++
++    return ret;
++}
++
++static int parse_hwp_opts(xc_set_hwp_para_t *set_hwp, int *cpuid,
++                          int argc, char *argv[])
++{
++    int i = 0;
++
++    if ( argc < 1 )
++        return -1;
++
++    if ( parse_cpuid_non_fatal(argv[i], cpuid) == 0 )
++    {
++        i++;
++    }
++
++    if ( i == argc )
++        return -1;
++
++    if ( strcasecmp(argv[i], "powersave") == 0 )
++    {
++        set_hwp->set_params = XEN_SYSCTL_HWP_SET_PRESET_POWERSAVE;
++        i++;
++    }
++    else if ( strcasecmp(argv[i], "performance") == 0 )
++    {
++        set_hwp->set_params = XEN_SYSCTL_HWP_SET_PRESET_PERFORMANCE;
++        i++;
++    }
++    else if ( strcasecmp(argv[i], "balance") == 0 )
++    {
++        set_hwp->set_params = XEN_SYSCTL_HWP_SET_PRESET_BALANCE;
++        i++;
++    }
++
++    for ( ; i < argc; i++)
++    {
++        unsigned int val;
++        char *param;
++        int ret;
++
++        ret = parse_activity_window(set_hwp, argv[i]);
++        switch ( ret )
++        {
++        case -1:
++            return -1;
++        case 0:
++            continue;
++            break;
++        case 1:
++            /* try other parsing */
++            break;
++        }
++
++        /* sscanf can't handle split on ':' for "%ms:%u'  */
++        ret = sscanf(argv[i], "%m[a-zA-Z_]:%u", &param, &val);
++        if ( ret != 2 )
++        {
++            fprintf(stderr, "%s is an invalid hwp parameter.\n", argv[i]);
++            return -1;
++        }
++
++        if ( val > 255 )
++        {
++            fprintf(stderr, "%s value %u is out of range.\n", param, val);
++            return -1;
++        }
++
++        if ( strncasecmp(param, "min", 3) == 0 )
++        {
++            set_hwp->minimum = val;
++            set_hwp->set_params |= XEN_SYSCTL_HWP_SET_MINIMUM;
++        }
++        else if ( strncasecmp(param, "max", 3) == 0 )
++        {
++            set_hwp->maximum = val;
++            set_hwp->set_params |= XEN_SYSCTL_HWP_SET_MAXIMUM;
++        }
++        else if ( strncasecmp(param, "des", 3) == 0 )
++        {
++            set_hwp->desired = val;
++            set_hwp->set_params |= XEN_SYSCTL_HWP_SET_DESIRED;
++        }
++        else if ( strncasecmp(param, "ene", 3) == 0 )
++        {
++            set_hwp->energy_perf = val;
++            set_hwp->set_params |= XEN_SYSCTL_HWP_SET_ENERGY_PERF;
++        }
++        else
++        {
++            fprintf(stderr, "%s is an invalid parameter\n.", param);
++            return -1;
++        }
++
++        free(param);
++    }
++
++    return 0;
++}
++
++static void hwp_set_func(int argc, char *argv[])
++{
++    xc_set_hwp_para_t set_hwp = {};
++    int cpuid = -1;
++    int i = 0;
++
++    if ( parse_hwp_opts(&set_hwp, &cpuid, argc, argv) )
++    {
++        fprintf(stderr, "Missing, excess, or invalid argument(s)\n");
++        exit(EINVAL);
++    }
++
++    if ( cpuid != -1 )
++    {
++        i = cpuid;
++        max_cpu_nr = i + 1;
++    }
++
++    for ( ; i < max_cpu_nr; i++ )
++        if ( xc_set_cpufreq_hwp(xc_handle, i, &set_hwp) )
++            fprintf(stderr, "[CPU%d] failed to set hwp params (%d - %s)\n",
++                    i, errno, strerror(errno));
++}
++
+ struct {
+     const char *name;
+     void (*function)(int argc, char *argv[]);
+@@ -1319,6 +1558,7 @@ struct {
+     { "get-cpufreq-average", cpufreq_func },
+     { "start", start_gather_func },
+     { "get-cpufreq-para", cpufreq_para_func },
++    { "set-cpufreq-hwp", hwp_set_func },
+     { "set-scaling-maxfreq", scaling_max_freq_func },
+     { "set-scaling-minfreq", scaling_min_freq_func },
+     { "set-scaling-governor", scaling_governor_func },
+-- 
+2.37.3
+

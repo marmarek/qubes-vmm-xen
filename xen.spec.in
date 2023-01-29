@@ -215,6 +215,22 @@ Patch648: patch-0005-libxl-Add-additional-domain-suspend-resume-logs.patch
 Patch649: patch-pvcontrol-0001-libxl-workaround-for-Windows-PV-drivers-removing-con.patch
 Patch650: patch-pvcontrol-0002-libxl-check-control-feature-before-issuing-pvcontrol.patch
 
+Patch660: patch-0001-cpufreq-Allow-restricting-to-internal-governors-only.patch
+Patch661: patch-0002-cpufreq-Add-perf_freq-to-cpuinfo.patch
+Patch662: patch-0003-cpufreq-Export-intel_feature_detect.patch
+Patch663: patch-0004-cpufreq-Add-Hardware-P-State-HWP-driver.patch
+Patch664: patch-0005-xenpm-Change-get-cpufreq-para-output-for-internal.patch
+Patch665: patch-0006-cpufreq-Export-HWP-parameters-to-userspace.patch
+Patch666: patch-0007-libxc-Include-hwp_para-in-definitions.patch
+Patch667: patch-0008-xenpm-Print-HWP-parameters.patch
+Patch668: patch-0009-xen-Add-SET_CPUFREQ_HWP-xen_sysctl_pm_op.patch
+Patch669: patch-0010-libxc-Add-xc_set_cpufreq_hwp.patch
+Patch670: patch-0011-xenpm-Factor-out-a-non-fatal-cpuid_parse-variant.patch
+Patch671: patch-0012-xenpm-Add-set-cpufreq-hwp-subcommand.patch
+Patch672: patch-0013-CHANGELOG-Add-Intel-HWP-entry.patch
+Patch673: patch-0014-cpufreq-drop-Fast-WRMSR-RDMSR-Control-MSR-support.patch
+
+
 # GCC8 fixes
 Patch714: patch-tools-kdd-mute-spurious-gcc-warning.patch
 

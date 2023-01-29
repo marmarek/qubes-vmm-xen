@@ -1,0 +1,94 @@
+From 0fa56afde16d66435a7db5d8dae56d7dec649538 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marek=20Marczykowski-G=C3=B3recki?=
+ <marmarek@invisiblethingslab.com>
+Date: Sun, 29 Jan 2023 03:00:22 +0100
+Subject: [PATCH 14/14] cpufreq: drop "Fast WRMSR/RDMSR Control MSR" support
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+According to the SDM it's supported only on Ice Lake (models 0x7D and
+0x7E) and dropped later. With limited scope, lack of hardware to
+test on and unclear detection (other than hardcoded models list),
+carrying this code is more risky than it's worth.
+
+Signed-off-by: Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>
+---
+ xen/arch/x86/acpi/cpufreq/hwp.c | 33 ---------------------------------
+ 1 file changed, 33 deletions(-)
+
+diff --git a/xen/arch/x86/acpi/cpufreq/hwp.c b/xen/arch/x86/acpi/cpufreq/hwp.c
+index 0fd70d76a893..cf3599c860bc 100644
+--- a/xen/arch/x86/acpi/cpufreq/hwp.c
++++ b/xen/arch/x86/acpi/cpufreq/hwp.c
+@@ -33,7 +33,6 @@ static bool feature_hwp_pkg_level_ctl;
+ static bool feature_hwp_peci;
+ 
+ static bool feature_hdc;
+-static bool feature_fast_msr;
+ 
+ bool opt_hwp = true;
+ boolean_param("hwp", opt_hwp);
+@@ -139,7 +138,6 @@ __initcall(cpufreq_gov_hwp_init);
+ bool hwp_available(void)
+ {
+     uint32_t eax;
+-    uint64_t val;
+     bool use_hwp;
+ 
+     if ( boot_cpu_data.cpuid_level < CPUID_PM_LEAF )
+@@ -179,21 +177,6 @@ bool hwp_available(void)
+         return false;
+     }
+ 
+-    hwp_verbose("HWP: FAST_IA32_HWP_REQUEST %ssupported\n",
+-                eax & CPUID6_EAX_FAST_HWP_MSR ? "" : "not ");
+-    if ( eax & CPUID6_EAX_FAST_HWP_MSR )
+-    {
+-        if ( rdmsr_safe(MSR_FAST_UNCORE_MSRS_CAPABILITY, val) )
+-            hwp_err("error rdmsr_safe(MSR_FAST_UNCORE_MSRS_CAPABILITY)\n");
+-
+-        hwp_verbose("HWP: MSR_FAST_UNCORE_MSRS_CAPABILITY: %016lx\n", val);
+-        if (val & FAST_IA32_HWP_REQUEST )
+-        {
+-            hwp_verbose("HWP: FAST_IA32_HWP_REQUEST MSR available\n");
+-            feature_fast_msr = true;
+-        }
+-    }
+-
+     feature_hdc = !!(eax & CPUID6_EAX_HDC);
+ 
+     hwp_verbose("HWP: Hardware Duty Cycling (HDC) %ssupported\n",
+@@ -245,19 +228,6 @@ static void hdc_set_pm_ctl1(bool val)
+         hwp_err("error wrmsr_safe(MSR_IA32_PM_CTL1): %016lx\n", msr);
+ }
+ 
+-static void hwp_fast_uncore_msrs_ctl(bool val)
+-{
+-    uint64_t msr;
+-
+-    if ( rdmsr_safe(MSR_FAST_UNCORE_MSRS_CTL, msr) )
+-        hwp_err("error rdmsr_safe(MSR_FAST_UNCORE_MSRS_CTL)\n");
+-
+-    msr = val;
+-
+-    if ( wrmsr_safe(MSR_FAST_UNCORE_MSRS_CTL, msr) )
+-        hwp_err("error wrmsr_safe(MSR_FAST_UNCORE_MSRS_CTL): %016lx\n", msr);
+-}
+-
+ static void hwp_get_cpu_speeds(struct cpufreq_policy *policy)
+ {
+     uint32_t base_khz, max_khz, bus_khz, edx;
+@@ -329,9 +299,6 @@ static void hwp_init_msrs(void *info)
+         hdc_set_pm_ctl1(true);
+     }
+ 
+-    if ( feature_fast_msr )
+-        hwp_fast_uncore_msrs_ctl(true);
+-
+     hwp_get_cpu_speeds(policy);
+ }
+ 
+-- 
+2.37.3
+
