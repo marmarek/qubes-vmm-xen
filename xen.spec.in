@@ -138,20 +138,31 @@ Patch0509: 0509-xsa471-4.17-02.patch
 Patch0510: 0510-xsa471-4.17-03.patch
 Patch0511: 0511-xsa471-4.17-04.patch
 Patch0512: 0512-xsa471-4.17-05.patch
+# 512 good(2)
 Patch0513: 0513-xsa471-4.17-06.patch
 Patch0514: 0514-xsa471-4.17-07.patch
+# 514 good(2)
 Patch0515: 0515-xsa471-4.17-08.patch
-Patch0516: 0516-xsa471-4.17-09.patch
-Patch0517: 0517-xsa471-4.17-10.patch
-Patch0518: 0518-xsa471-4.17-11.patch
-Patch0519: 0519-xsa471-4.17-12.patch
-Patch0520: 0520-xsa471-4.17-13.patch
-Patch0521: 0521-xsa471-4.17-14.patch
-Patch0522: 0522-xsa471-4.17-15.patch
-Patch0523: 0523-xsa471-4.17-16.patch
-Patch0524: 0524-xsa471-4.17-17.patch
-Patch0525: 0525-xsa471-4.17-18.patch
-Patch0526: 0526-xsa471-4.17-19.patch
+# 515 bad!
+Patch0516: 0001-DEBUG-S3.patch
+# 516 good(2)
+#Patch0516: 0516-xsa471-4.17-09.patch
+#Patch0517: 0517-xsa471-4.17-10.patch
+# 517 bad
+#Patch0518: 0518-xsa471-4.17-11.patch
+# 518 bad
+#Patch0519: 0519-xsa471-4.17-12.patch
+#Patch0520: 0520-xsa471-4.17-13.patch
+#Patch0521: 0521-xsa471-4.17-14.patch
+# 521 bad
+#Patch0522: 0522-xsa471-4.17-15.patch
+#Patch0523: 0523-xsa471-4.17-16.patch
+#Patch0524: 0524-xsa471-4.17-17.patch
+# 524 bad
+#Patch0525: 0525-xsa471-4.17-18.patch
+# 525 bad
+#Patch0526: 0526-xsa471-4.17-19.patch
+# 526 bad
 
 # Upstreamable patches
 Patch0604: 0604-libxl-create-writable-error-xenstore-dir.patch
